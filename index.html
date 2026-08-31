@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusStock · Panel de Inventario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0a0e17;
+    --bg-1:#0d1220;
+    --bg-2:#111827;
+    --glass:rgba(255,255,255,0.04);
+    --glass-border:rgba(255,255,255,0.08);
+    --cyan:#3fe6d0;
+    --cyan-soft:rgba(63,230,208,0.35);
+    --violet:#9b7bff;
+    --violet-soft:rgba(155,123,255,0.35);
+    --text-hi:#eef2ff;
+    --text-mid:#9aa4bf;
+    --text-low:#5c6785;
+    --danger:#ff5d7a;
+    --success:#3fe6a0;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html,body{height:100%;}
+
+  body{
+    font-family:'Inter', sans-serif;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(155,123,255,0.14), transparent 42%),
+      radial-gradient(circle at 88% 82%, rgba(63,230,208,0.12), transparent 45%),
+      var(--bg-0);
+    color:var(--text-hi);
+    min-height:100vh;
+    padding:48px 5vw 80px;
+    overflow-x:hidden;
+  }
+
+  /* subtle grid texture, like a data-eng workbench */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size:64px 64px;
+    pointer-events:none;
+    mask-image:radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+    z-index:0;
+  }
+
+  header.top{
+    position:relative; z-index:1;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:20px;
+    max-width:1320px;
+    margin:0 auto 44px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+
+  .brand-mark{
+    width:44px; height:44px;
+    border-radius:12px;
+    background:linear-gradient(135deg, var(--cyan), var(--violet));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:19px;
+    color:#060910;
+    box-shadow:0 0 26px -4px var(--cyan-soft);
+  }
+
+  .brand h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+
+  .brand p{
+    font-size:13px;
+    color:var(--text-low);
+    margin-top:2px;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  .conn-status{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 16px;
+    border-radius:100px;
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(14px);
+    font-size:13px;
+    font-family:'JetBrains Mono', monospace;
+    color:var(--text-mid);
+  }
+
+  .conn-dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--text-low);
+    transition:background .3s ease, box-shadow .3s ease;
+  }
+  .conn-dot.online{ background:var(--success); box-shadow:0 0 10px 1px var(--success); }
+  .conn-dot.offline{ background:var(--danger); box-shadow:0 0 10px 1px var(--danger); }
+  .conn-dot.pulse{ animation:pulseDot 1.4s ease-in-out infinite; }
+
+  @keyframes pulseDot{
+    0%,100%{ opacity:1; }
+    50%{ opacity:.35; }
+  }
+
+  main{
+    position:relative; z-index:1;
+    max-width:1320px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:28px;
+    align-items:start;
+  }
+
+  @media (max-width:920px){
+    main{ grid-template-columns:1fr; }
+  }
+
+  .panel{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(160deg, rgba(255,255,255,0.05), transparent 40%);
+    pointer-events:none;
+  }
+
+  /* ---------- FORM PANEL ---------- */
+
+  .form-panel{
+    padding:30px 28px 28px;
+    position:sticky;
+    top:32px;
+  }
+
+  .panel-eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--cyan);
+    letter-spacing:0.02em;
+    margin-bottom:6px;
+  }
+
+  .panel h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:21px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+
+  .panel .sub{
+    font-size:13.5px;
+    color:var(--text-mid);
+    line-height:1.5;
+    margin-bottom:26px;
+  }
+
+  .field{
+    margin-bottom:20px;
+    position:relative;
+  }
+
+  .field label{
+    display:block;
+    font-size:12.5px;
+    color:var(--text-mid);
+    margin-bottom:8px;
+    font-weight:500;
+  }
+
+  .field input{
+    width:100%;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-sm);
+    padding:13px 14px;
+    font-size:14.5px;
+    color:var(--text-hi);
+    font-family:'Inter', sans-serif;
+    transition:border-color .25s ease, box-shadow .25s ease, background .25s ease;
+  }
+
+  .field input::placeholder{ color:var(--text-low); }
+
+  .field input:focus{
+    outline:none;
+    border-color:var(--cyan-soft);
+    background:rgba(63,230,208,0.045);
+    box-shadow:0 0 0 3px rgba(63,230,208,0.08), 0 0 20px -6px var(--cyan-soft);
+  }
+
+  .field-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+
+  .btn-save{
+    width:100%;
+    margin-top:6px;
+    padding:15px 20px;
+    border:none;
+    border-radius:var(--radius-sm);
+    background:linear-gradient(135deg, var(--cyan), var(--violet));
+    color:#060910;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition:transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    box-shadow:0 10px 30px -10px var(--cyan-soft);
+  }
+
+  .btn-save:hover{
+    transform:translateY(-2px);
+    box-shadow:0 14px 36px -8px var(--violet-soft), 0 0 22px -4px var(--cyan-soft);
+    filter:brightness(1.05);
+  }
+
+  .btn-save:active{ transform:translateY(0); }
+
+  .btn-save:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  .btn-save svg{ width:17px; height:17px; }
+
+  .spinner{
+    width:16px; height:16px;
+    border:2px solid rgba(6,9,16,0.25);
+    border-top-color:#060910;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+    display:none;
+  }
+
+  .btn-save.loading .spinner{ display:inline-block; }
+  .btn-save.loading .btn-label{ display:none; }
+
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .api-hint{
+    margin-top:20px;
+    padding:12px 14px;
+    border-radius:var(--radius-sm);
+    background:rgba(255,255,255,0.02);
+    border:1px dashed var(--glass-border);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--text-low);
+    word-break:break-all;
+    line-height:1.6;
+  }
+  .api-hint b{ color:var(--text-mid); }
+
+  /* ---------- GRID PANEL ---------- */
+
+  .grid-panel{
+    padding:30px 28px 40px;
+    min-height:520px;
+  }
+
+  .grid-panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:26px;
+  }
+
+  .stat-pill{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--text-mid);
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--glass-border);
+    padding:7px 13px;
+    border-radius:100px;
+  }
+  .stat-pill b{ color:var(--cyan); font-weight:600; }
+
+  .products-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+    gap:18px;
+  }
+
+  .product-card{
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-md);
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+    animation:cardIn .45s cubic-bezier(.16,1,.3,1) both;
+    transition:border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+  }
+
+  .product-card::after{
+    content:"";
+    position:absolute;
+    top:-40%; left:-10%;
+    width:60%; height:180%;
+    background:linear-gradient(120deg, transparent, rgba(255,255,255,0.05), transparent);
+    transform:rotate(12deg);
+    pointer-events:none;
+  }
+
+  .product-card:hover{
+    border-color:var(--cyan-soft);
+    transform:translateY(-4px);
+    box-shadow:0 16px 34px -14px rgba(0,0,0,0.5), 0 0 24px -10px var(--cyan-soft);
+  }
+
+  @keyframes cardIn{
+    from{ opacity:0; transform:translateY(14px) scale(.97); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  .product-card .idx{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--text-low);
+    margin-bottom:10px;
+  }
+
+  .product-card h3{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16.5px;
+    font-weight:600;
+    margin-bottom:16px;
+    line-height:1.3;
+    word-break:break-word;
+  }
+
+  .product-metrics{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:10px;
+  }
+
+  .metric .metric-label{
+    font-size:11px;
+    color:var(--text-low);
+    margin-bottom:4px;
+  }
+
+  .metric .metric-value{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:19px;
+    font-weight:700;
+  }
+
+  .metric.price .metric-value{ color:var(--cyan); }
+  .metric.stock .metric-value{ color:var(--violet); }
+
+  .stock-bar{
+    margin-top:14px;
+    height:5px;
+    border-radius:100px;
+    background:rgba(255,255,255,0.06);
+    overflow:hidden;
+  }
+  .stock-bar-fill{
+    height:100%;
+    border-radius:100px;
+    background:linear-gradient(90deg, var(--violet), var(--cyan));
+  }
+
+  /* empty / error states */
+  .grid-state{
+    grid-column:1 / -1;
+    text-align:center;
+    padding:70px 20px;
+    color:var(--text-mid);
+  }
+
+  .grid-state .state-icon{
+    width:52px; height:52px;
+    margin:0 auto 18px;
+    opacity:.55;
+  }
+
+  .grid-state h4{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16px;
+    color:var(--text-hi);
+    margin-bottom:8px;
+    font-weight:600;
+  }
+
+  .grid-state p{
+    font-size:13.5px;
+    max-width:360px;
+    margin:0 auto;
+    line-height:1.6;
+  }
+
+  .grid-state code{
+    font-family:'JetBrains Mono', monospace;
+    background:rgba(255,255,255,0.05);
+    padding:2px 6px;
+    border-radius:5px;
+    font-size:12px;
+    color:var(--cyan);
+  }
+
+  /* ---------- TOASTS ---------- */
+
+  #toast-stack{
+    position:fixed;
+    top:26px;
+    right:26px;
+    z-index:999;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    max-width:340px;
+  }
+
+  .toast{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:15px 16px;
+    border-radius:var(--radius-sm);
+    background:rgba(13,18,32,0.85);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    box-shadow:0 18px 40px -12px rgba(0,0,0,0.6);
+    animation:toastIn .38s cubic-bezier(.16,1,.3,1) both;
+  }
+
+  .toast.leaving{
+    animation:toastOut .32s ease forwards;
+  }
+
+  @keyframes toastIn{
+    from{ opacity:0; transform:translateX(40px) scale(.96); }
+    to{ opacity:1; transform:translateX(0) scale(1); }
+  }
+  @keyframes toastOut{
+    to{ opacity:0; transform:translateX(40px) scale(.96); }
+  }
+
+  .toast .toast-icon{
+    width:20px; height:20px;
+    flex-shrink:0;
+    margin-top:1px;
+  }
+
+  .toast.success{ border-color:rgba(63,230,160,0.35); box-shadow:0 18px 40px -12px rgba(0,0,0,0.6), 0 0 22px -8px rgba(63,230,160,0.35); }
+  .toast.success .toast-icon{ color:var(--success); }
+  .toast.error{ border-color:rgba(255,93,122,0.35); box-shadow:0 18px 40px -12px rgba(0,0,0,0.6), 0 0 22px -8px rgba(255,93,122,0.35); }
+  .toast.error .toast-icon{ color:var(--danger); }
+
+  .toast-body strong{
+    display:block;
+    font-size:13.5px;
+    font-weight:600;
+    margin-bottom:2px;
+  }
+  .toast-body span{
+    font-size:12.5px;
+    color:var(--text-mid);
+    line-height:1.4;
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.08); border-radius:100px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast-stack"></div>
+
+<header class="top">
+  <div class="brand">
+    <div class="brand-mark">NS</div>
+    <div>
+      <h1>NexusStock</h1>
+      <p>panel_inventario // graduacion_2026</p>
+    </div>
+  </div>
+  <div class="conn-status">
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connText">Comprobando servidor…</span>
+  </div>
+</header>
+
+<main>
+  <!-- SECCIÓN A: REGISTRO -->
+  <section class="panel form-panel">
+    <div class="panel-eyebrow">registro</div>
+    <h2>Nuevo producto</h2>
+    <p class="sub">Estos datos se envían por POST a tu API de Node. Sin backend levantado, verás el aviso de conexión en rojo.</p>
+
+    <form id="productForm">
+      <div class="field">
+        <label for="nombre">Nombre del producto</label>
+        <input type="text" id="nombre" name="nombre" placeholder="Ej. Teclado mecánico 60%" required>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="precio">Precio (€)</label>
+          <input type="number" id="precio" name="precio" placeholder="0.00" step="0.01" min="0" required>
+        </div>
+        <div class="field">
+          <label for="stock">Stock</label>
+          <input type="number" id="stock" name="stock" placeholder="0" min="0" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-save" id="btnSave">
+        <span class="spinner"></span>
+        <svg class="btn-label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="btn-label">Guardar en la nube</span>
+      </button>
+    </form>
+
+    <div class="api-hint">
+      <b>API_URL</b> → http://localhost:3000/api/productos
+    </div>
+  </section>
+
+  <!-- SECCIÓN B: VISUALIZACIÓN -->
+  <section class="panel grid-panel">
+    <div class="grid-panel-head">
+      <div>
+        <div class="panel-eyebrow">inventario</div>
+        <h2 style="font-size:21px;">Productos en la nube</h2>
+      </div>
+      <div class="stat-pill"><b id="countPill">0</b> registros</div>
+    </div>
+
+    <div class="products-grid" id="productsGrid">
+      <!-- Estado inicial / cards / errores se pintan aquí -->
+    </div>
+  </section>
+</main>
+
+<script>
+  // ============================================================
+  // RUTA FIJA DE LA API — no modificar
+  // ============================================================
+  const API_URL = 'http://localhost:3000/api/productos';
+
+  const form        = document.getElementById('productForm');
+  const btnSave     = document.getElementById('btnSave');
+  const productsGrid= document.getElementById('productsGrid');
+  const countPill   = document.getElementById('countPill');
+  const connDot     = document.getElementById('connDot');
+  const connText    = document.getElementById('connText');
+  const toastStack  = document.getElementById('toast-stack');
+
+  // ---------- TOASTS ----------
+  const ICONS = {
+    success: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error:   '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  };
+
+  function showToast(type, title, message, duration = 4200){
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+      ${ICONS[type]}
+      <div class="toast-body">
+        <strong>${title}</strong>
+        <span>${message}</span>
+      </div>
+    `;
+    toastStack.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('leaving');
+      toast.addEventListener('animationend', () => toast.remove(), { once:true });
+    }, duration);
+  }
+
+  // ---------- ESTADO DE CONEXIÓN ----------
+  function setConnStatus(status){
+    connDot.classList.remove('online','offline','pulse');
+    if(status === 'checking'){
+      connDot.classList.add('pulse');
+      connText.textContent = 'Comprobando servidor…';
+    } else if(status === 'online'){
+      connDot.classList.add('online');
+      connText.textContent = 'Servidor Node conectado';
+    } else {
+      connDot.classList.add('offline');
+      connText.textContent = 'Servidor Node desconectado';
+    }
+  }
+
+  // ---------- RENDER DE TARJETAS ----------
+  function renderEmptyState(){
+    productsGrid.innerHTML = `
+      <div class="grid-state">
+        <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+          <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+        </svg>
+        <h4>Inventario vacío</h4>
+        <p>Registra tu primer producto desde el formulario. Se guardará en <code>productos</code> vía POST.</p>
+      </div>`;
+    countPill.textContent = '0';
+  }
+
+  function renderErrorState(){
+    productsGrid.innerHTML = `
+      <div class="grid-state">
+        <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 9v4"/><path d="M12 17h.01"/>
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+        </svg>
+        <h4>No se puede leer el inventario</h4>
+        <p>No hay respuesta en <code>${API_URL}</code>. Levanta tu servidor Node y recarga.</p>
+      </div>`;
+    countPill.textContent = '—';
+  }
+
+  function renderProducts(productos){
+    if(!Array.isArray(productos) || productos.length === 0){
+      renderEmptyState();
+      return;
+    }
+
+    countPill.textContent = productos.length;
+
+    const maxStock = Math.max(...productos.map(p => Number(p.stock) || 0), 1);
+
+    productsGrid.innerHTML = productos.map((p, i) => {
+      const stockPct = Math.min(100, Math.round(((Number(p.stock)||0) / maxStock) * 100));
+      const precio = Number(p.precio ?? p.price ?? 0).toFixed(2);
+      const nombre = p.nombre ?? p.name ?? 'Producto sin nombre';
+      const stock  = Number(p.stock ?? 0);
+
+      return `
+        <div class="product-card" style="animation-delay:${i * 0.04}s">
+          <div class="idx">#${String(i + 1).padStart(3,'0')}</div>
+          <h3>${escapeHtml(nombre)}</h3>
+          <div class="product-metrics">
+            <div class="metric price">
+              <div class="metric-label">Precio</div>
+              <div class="metric-value">${precio}€</div>
+            </div>
+            <div class="metric stock">
+              <div class="metric-label">Stock</div>
+              <div class="metric-value">${stock}</div>
+            </div>
+          </div>
+          <div class="stock-bar"><div class="stock-bar-fill" style="width:${stockPct}%"></div></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---------- GET: cargar productos ----------
+  async function loadProductos({ silent = false } = {}){
+    if(!silent) setConnStatus('checking');
+
+    try{
+      const res = await fetch(API_URL, { method:'GET' });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      setConnStatus('online');
+      renderProducts(data);
+
+    }catch(err){
+      setConnStatus('offline');
+      renderErrorState();
+      if(!silent){
+        showToast('error', 'Servidor no disponible',
+          'No se ha podido conectar con el backend Node en localhost:3000.');
+      }
+    }
+  }
+
+  // ---------- POST: guardar producto ----------
+  async function guardarProducto(payload){
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json().catch(() => ({}));
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      nombre: form.nombre.value.trim(),
+      precio: parseFloat(form.precio.value),
+      stock: parseInt(form.stock.value, 10)
+    };
+
+    if(!payload.nombre || isNaN(payload.precio) || isNaN(payload.stock)){
+      showToast('error', 'Datos incompletos', 'Revisa el nombre, precio y stock antes de guardar.');
+      return;
+    }
+
+    btnSave.classList.add('loading');
+    btnSave.disabled = true;
+
+    try{
+      await guardarProducto(payload);
+      setConnStatus('online');
+      showToast('success', 'Producto guardado', `“${payload.nombre}” se ha subido correctamente a la nube.`);
+      form.reset();
+      form.nombre.focus();
+      await loadProductos({ silent:true });
+
+    }catch(err){
+      setConnStatus('offline');
+      showToast('error', 'Fallo al guardar',
+        'El servidor Node parece estar apagado o ha rechazado la petición.');
+    }finally{
+      btnSave.classList.remove('loading');
+      btnSave.disabled = false;
+    }
+  });
+
+  // ---------- Carga inicial ----------
+  renderEmptyState();
+  loadProductos();
+</script>
+
+</body>
+</html>
